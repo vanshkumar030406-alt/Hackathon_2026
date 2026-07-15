@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AssetFlow Auth</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+
+    <div class="left-panel">
+        <h1>AssetFlow</h1>
+        <p>Enterprise Asset & Resource Management System</p>
+
+        <ul>
+            <li>✔ Asset Tracking</li>
+            <li>✔ Resource Booking</li>
+            <li>✔ Maintenance Workflow</li>
+            <li>✔ Audit Management</li>
+        </ul>
+    </div>
+
+    <div class="auth-card">
+
+        <input type="radio" name="tab" id="login" checked>
+        <input type="radio" name="tab" id="signup">
+
+        <div class="tabs">
+            <label for="login">Login</label>
+            <label for="signup">Sign Up</label>
+        </div>
+
+        <div class="forms">
+
+            <form class="login-form" action="dashboard.html" method="get">
+                <h2>Welcome Back</h2>
+
+                <input type="email" placeholder="Email Address" required>
+                <input type="password" placeholder="Password" required>
+
+                <a href="#">Forgot Password?</a>
+
+                <button type="submit">Login</button>
+            </form>
+
+            <form class="signup-form">
+                <h2>Create Account</h2>
+
+                <input type="text" placeholder="Full Name" required>
+                <input type="email" placeholder="Email Address" required>
+                <input type="password" placeholder="Password" required>
+                <input type="password" placeholder="Confirm Password" required>
+
+                <div class="employee">
+                    Account Type: Employee
+                </div>
+
+                <button type="submit">Create Account</button>
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

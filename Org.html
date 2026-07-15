@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organization Setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="org.css">
+</head>
+<body>
+
+<div class="screen">
+
+  <!-- HEADER -->
+  <div class="header-row">
+    <div>
+      <p class="eyebrow">Master data · Everything else depends on this</p>
+      <h1>Organization setup</h1>
+    </div>
+    <span class="admin-badge">ADMIN ONLY</span>
+  </div>
+
+  <!-- TAB STRIP -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="dept"><span class="tab-letter">A</span>Departments</button>
+    <button class="tab-btn" data-tab="cat"><span class="tab-letter">B</span>Asset categories</button>
+    <button class="tab-btn" data-tab="emp"><span class="tab-letter">C</span>Employee directory</button>
+  </div>
+
+  <!-- ============================================================
+       TAB A - DEPARTMENT MANAGEMENT
+       ============================================================ -->
+  <div class="panel" id="panel-dept">
+    <div class="panel-head">
+      <h2>Department management</h2>
+      <p>Create departments, assign a head, and optionally nest them under a parent.</p>
+    </div>
+
+    <div class="form-grid">
+      <div>
+        <label>Department name</label>
+        <input type="text" id="dept-name" placeholder="e.g. Engineering">
+      </div>
+      <div>
+        <label>Department head</label>
+        <select id="dept-head"></select>
+      </div>
+      <div>
+        <label>Parent department (optional)</label>
+        <select id="dept-parent">
+          <option value="">None — top level</option>
+        </select>
+      </div>
+      <div>
+        <button class="primary" onclick="addDepartment()">Add department</button>
+      </div>
+    </div>
+
+    <div class="list" id="dept-list"></div>
+  </div>
+
+  <!-- ============================================================
+       TAB B - ASSET CATEGORY MANAGEMENT
+       ============================================================ -->
+  <div class="panel" id="panel-cat" style="display:none;">
+    <div class="panel-head">
+      <h2>Asset category management</h2>
+      <p>Define categories assets are grouped under, with an optional custom field.</p>
+    </div>
+
+    <div class="form-grid">
+      <div>
+        <label>Category name</label>
+        <input type="text" id="cat-name" placeholder="e.g. Electronics">
+      </div>
+      <div>
+        <label>Custom field name (optional)</label>
+        <input type="text" id="cat-field-name" placeholder="e.g. Warranty period">
+      </div>
+      <div>
+        <label>Custom field value (optional)</label>
+        <input type="text" id="cat-field-value" placeholder="e.g. 24 months">
+      </div>
+      <div>
+        <button class="primary" onclick="addCategory()">Add category</button>
+      </div>
+    </div>
+
+    <div class="list" id="cat-list"></div>
+  </div>
+
+  <!-- ============================================================
+       TAB C - EMPLOYEE DIRECTORY
+       ============================================================ -->
+  <div class="panel" id="panel-emp" style="display:none;">
+    <div class="panel-head">
+      <h2>Employee directory</h2>
+      <p>Add employees and assign roles here — this is the only screen where roles are assigned.</p>
+    </div>
+
+    <div class="form-grid">
+      <div>
+        <label>Full name</label>
+        <input type="text" id="emp-name" placeholder="e.g. Priya Shah">
+      </div>
+      <div>
+        <label>Email</label>
+        <input type="email" id="emp-email" placeholder="name@company.com">
+      </div>
+      <div>
+        <label>Department</label>
+        <select id="emp-dept"></select>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="emp-active" checked>
+        <label for="emp-active">Active</label>
+      </div>
+      <div>
+        <button class="primary" onclick="addEmployee()">Add employee</button>
+      </div>
+    </div>
+
+    <div class="list" id="emp-list"></div>
+  </div>
+
+</div>
+
+<script>
+/* ================================================================
+   STATE
+   Everything lives in memory in three plain arrays.
+   Each item is just an object — no framework, no database.
+   (This demo intentionally skips localStorage/back-end storage
+   so it runs anywhere with zero setup; swap in a real API or
+   database call inside each add___() / delete___() function
+   when you wire this into your actual hackathon backend.)
+   ================================================================ */
+let departments = [];   // { id, name, headId, parentId, status }
+let categories  = [];   // { id, name, fieldName, fieldValue }
+let employees   = [];   // { id, name, email, deptId, status, role }
+
+let nextDeptId = 1, nextCatId = 1, nextEmpId = 1;
+
+/* ================================================================
+   TAB SWITCHING
+   ================================================================ */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-dept').style.display = 'none';
+    document.getElementById('panel-cat').style.display  = 'none';
+    document.getElementById('panel-emp').style.display  = 'none';
+    document.getElementById('panel-' + btn.dataset.tab).style.display = 'block';
+  });
+});
+
+/* ================================================================
+   TAB A — DEPARTMENTS
+   ================================================================ */
+function addDepartment(){
+  const nameInput = document.getElementById('dept-name');
+  const name = nameInput.value.trim();
+  if(!name){ alert('Enter a department name.'); return; }
+
+  const headId   = document.getElementById('dept-head').value || null;
+  const parentId = document.getElementById('dept-parent').value || null;
+
+  departments.push({
+    id: nextDeptId++,
+    name: name,
+    headId: headId,
+    parentId: parentId,
+    status: 'Active'
+  });
+
+  nameInput.value = '';
+  renderAll();
+}
+
+function toggleDeptStatus(id){
+  const d = departments.find(d=>d.id===id);
+  d.status = d.status === 'Active' ? 'Inactive' : 'Active';
+  renderAll();
+}
+
+function deleteDept(id){
+  // Also un-parent any children so the tree doesn't break
+  departments.forEach(d=>{ if(d.parentId===id) d.parentId=null; });
+  departments = departments.filter(d=>d.id!==id);
+  renderAll();
+}
+
+function renderDeptOptions(){
+  // Department Head dropdown pulls from the employee list
+  const headSel = document.getElementById('dept-head');
+  headSel.innerHTML = '<option value="">Unassigned</option>' +
+    employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+
+  // Parent dropdown pulls from existing departments
+  const parentSel = document.getElementById('dept-parent');
+  parentSel.innerHTML = '<option value="">None — top level</option>' +
+    departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+}
+
+function renderDeptList(){
+  const list = document.getElementById('dept-list');
+  if(departments.length===0){
+    list.innerHTML = '<div class="empty">No departments yet. Add one above.</div>';
+    return;
+  }
+
+  // depth-first render so children appear indented under their parent
+  function renderLevel(parentId, depth){
+    return departments
+      .filter(d=>d.parentId === parentId)
+      .map(d=>{
+        const head = employees.find(e=>e.id==d.headId);
+        const indent = depth>0 ? '<span class="tree-indent">' + '└─'.padStart(depth*3,' ') + '</span>' : '';
+        return `
+          <div class="row">
+            <div class="row-main">
+              ${indent}
+              <div>
+                <div class="row-title">${d.name}</div>
+                <div class="row-sub">Head: ${head ? head.name : 'Unassigned'}</div>
+              </div>
+            </div>
+            <div class="row-actions">
+              <span class="pill ${d.status==='Active'?'active':'inactive'}">${d.status}</span>
+              <button class="icon-btn" onclick="toggleDeptStatus(${d.id})">Toggle</button>
+              <button class="icon-btn danger" onclick="deleteDept(${d.id})">Delete</button>
+            </div>
+          </div>
+        ` + renderLevel(d.id, depth+1);
+      }).join('');
+  }
+
+  list.innerHTML = renderLevel(null, 0);
+}
+
+/* ================================================================
+   TAB B — ASSET CATEGORIES
+   ================================================================ */
+function addCategory(){
+  const nameInput = document.getElementById('cat-name');
+  const name = nameInput.value.trim();
+  if(!name){ alert('Enter a category name.'); return; }
+
+  const fieldName  = document.getElementById('cat-field-name').value.trim();
+  const fieldValue = document.getElementById('cat-field-value').value.trim();
+
+  categories.push({ id: nextCatId++, name, fieldName, fieldValue });
+
+  nameInput.value = '';
+  document.getElementById('cat-field-name').value = '';
+  document.getElementById('cat-field-value').value = '';
+  renderAll();
+}
+
+function deleteCategory(id){
+  categories = categories.filter(c=>c.id!==id);
+  renderAll();
+}
+
+function renderCatList(){
+  const list = document.getElementById('cat-list');
+  if(categories.length===0){
+    list.innerHTML = '<div class="empty">No categories yet. Add one above.</div>';
+    return;
+  }
+  list.innerHTML = categories.map(c=>`
+    <div class="row">
+      <div class="row-main">
+        <div>
+          <div class="row-title">${c.name}</div>
+          ${c.fieldName ? `<div class="row-sub">${c.fieldName}: ${c.fieldValue || '—'}</div>` : ''}
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn danger" onclick="deleteCategory(${c.id})">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ================================================================
+   TAB C — EMPLOYEE DIRECTORY
+   ================================================================ */
+function addEmployee(){
+  const nameInput  = document.getElementById('emp-name');
+  const emailInput = document.getElementById('emp-email');
+  const name  = nameInput.value.trim();
+  const email = emailInput.value.trim();
+  if(!name || !email){ alert('Enter a name and email.'); return; }
+
+  const deptId = document.getElementById('emp-dept').value || null;
+  const active = document.getElementById('emp-active').checked;
+
+  employees.push({
+    id: nextEmpId++,
+    name, email,
+    deptId,
+    status: active ? 'Active' : 'Inactive',
+    role: 'Employee'   // default role — changed only via the dropdown below
+  });
+
+  nameInput.value = '';
+  emailInput.value = '';
+  renderAll();
+}
+
+function setEmployeeRole(id, role){
+  const e = employees.find(e=>e.id===id);
+  e.role = role;
+  renderAll();
+}
+
+function toggleEmpStatus(id){
+  const e = employees.find(e=>e.id===id);
+  e.status = e.status === 'Active' ? 'Inactive' : 'Active';
+  renderAll();
+}
+
+function deleteEmployee(id){
+  employees = employees.filter(e=>e.id!==id);
+  renderAll();
+}
+
+function renderEmpDeptOptions(){
+  const sel = document.getElementById('emp-dept');
+  sel.innerHTML = '<option value="">No department</option>' +
+    departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+}
+
+function renderEmpList(){
+  const list = document.getElementById('emp-list');
+  if(employees.length===0){
+    list.innerHTML = '<div class="empty">No employees yet. Add one above.</div>';
+    return;
+  }
+  list.innerHTML = employees.map(e=>{
+    const dept = departments.find(d=>d.id==e.deptId);
+    return `
+      <div class="row">
+        <div class="row-main">
+          <div>
+            <div class="row-title">${e.name}</div>
+            <div class="row-sub">${e.email} · ${dept ? dept.name : 'No department'}</div>
+          </div>
+        </div>
+        <div class="row-actions">
+          <span class="pill ${e.status==='Active'?'active':'inactive'}">${e.status}</span>
+          <span class="pill role">${e.role}</span>
+          <select class="role-assign" onchange="setEmployeeRole(${e.id}, this.value)">
+            <option value="Employee" ${e.role==='Employee'?'selected':''}>Employee</option>
+            <option value="Department Head" ${e.role==='Department Head'?'selected':''}>Department Head</option>
+            <option value="Asset Manager" ${e.role==='Asset Manager'?'selected':''}>Asset Manager</option>
+          </select>
+          <button class="icon-btn" onclick="toggleEmpStatus(${e.id})">Toggle</button>
+          <button class="icon-btn danger" onclick="deleteEmployee(${e.id})">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ================================================================
+   MASTER RENDER
+   Called after every change so all three tabs (and any dropdowns
+   that reference each other, like Department Head <- Employees)
+   always stay in sync.
+   ================================================================ */
+function renderAll(){
+  renderDeptOptions();
+  renderDeptList();
+  renderCatList();
+  renderEmpDeptOptions();
+  renderEmpList();
+}
+
+renderAll(); // initial paint
+</script>
+
+</body>
+</html>

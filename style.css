@@ -1,0 +1,156 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Segoe UI,sans-serif;
+}
+
+body{
+    min-height:100vh;
+    background:#0d1117;
+    color:#fff;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:20px;
+}
+
+.container{
+    width:1100px;
+    max-width:100%;
+    display:flex;
+    gap:50px;
+    align-items:center;
+}
+
+.left-panel{
+    flex:1;
+}
+
+.left-panel h1{
+    font-size:4rem;
+    color:#3b82f6;
+    margin-bottom:15px;
+}
+
+.left-panel p{
+    color:#b7c1d0;
+    margin-bottom:25px;
+}
+
+.left-panel li{
+    list-style:none;
+    margin:15px 0;
+}
+
+.auth-card{
+    width:420px;
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:20px;
+    padding:30px;
+}
+
+input[type="radio"]{
+    display:none;
+}
+
+.tabs{
+    display:flex;
+    margin-bottom:25px;
+}
+
+.tabs label{
+    flex:1;
+    text-align:center;
+    padding:12px;
+    cursor:pointer;
+    background:#21262d;
+}
+
+.tabs label:first-child{
+    border-radius:10px 0 0 10px;
+}
+
+.tabs label:last-child{
+    border-radius:0 10px 10px 0;
+}
+
+.forms form{
+    display:none;
+    flex-direction:column;
+}
+
+#login:checked ~ .forms .login-form{
+    display:flex;
+}
+
+#signup:checked ~ .forms .signup-form{
+    display:flex;
+}
+
+#login:checked ~ .tabs label[for="login"],
+#signup:checked ~ .tabs label[for="signup"]{
+    background:#2563eb;
+}
+
+form h2{
+    margin-bottom:20px;
+}
+
+form input{
+    width:100%;
+    padding:14px;
+    margin-bottom:15px;
+    border:none;
+    border-radius:10px;
+    background:#21262d;
+    color:white;
+}
+
+form a{
+    color:#60a5fa;
+    text-decoration:none;
+    margin-bottom:20px;
+}
+
+.employee{
+    background:#1e3a8a;
+    padding:12px;
+    text-align:center;
+    border-radius:10px;
+    margin-bottom:20px;
+}
+
+button{
+    padding:14px;
+    border:none;
+    border-radius:10px;
+    background:#2563eb;
+    color:white;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#1d4ed8;
+}
+
+@media(max-width:900px){
+
+    .container{
+        flex-direction:column;
+    }
+
+    .left-panel{
+        text-align:center;
+    }
+
+    .left-panel h1{
+        font-size:3rem;
+    }
+
+    .auth-card{
+        width:100%;
+        max-width:420px;
+    }
+}

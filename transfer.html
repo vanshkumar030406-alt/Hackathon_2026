@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asset Ops — Allocation &amp; Transfer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="transfer.css">
+</head>
+<body>
+
+<nav class="rail" aria-label="Primary navigation">
+  <div class="rail-logo">AO</div>
+  <a class="rail-item" href="dashboard.html">Dashboard</a>
+  <a class="rail-item active" href="assets-directory.html">Assets</a>
+  <a class="rail-item" href="resource.html">Bookings</a>
+  <a class="rail-item" href="Org.html">Organisation</a>
+  <a class="rail-item" href="transfer.html">Transfers</a>
+  <a class="rail-item" href="report.html">Reports</a>
+  <div class="rail-spacer"></div>
+  <div class="rail-avatar">RS</div>
+</nav>
+
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-title">
+      <h1>Asset Allocation &amp; Transfer</h1>
+      <span class="eyebrow">Manage who holds what</span>
+    </div>
+    <div class="topbar-right">
+      <span class="clock" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <main class="content">
+
+    <div class="section-label">Overview</div>
+    <section class="summary-grid" id="summaryGrid"></section>
+
+    <div class="body-grid">
+
+      <!-- Allocations table -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Current Allocations</h2>
+          <span class="count" id="assetCount">0 assets</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Holder</th>
+              <th>Expected Return</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="assetTableBody"></tbody>
+        </table>
+      </section>
+
+      <!-- Right column -->
+      <div style="display:flex; flex-direction:column; gap:18px;">
+
+        <!-- Allocate form -->
+        <section class="panel">
+          <div class="panel-head"><h2>Allocate Asset</h2></div>
+          <div class="panel-body">
+
+            <div class="conflict-box" id="conflictBox">
+              <div class="msg" id="conflictMsg"></div>
+              <button onclick="requestTransferFromConflict()">Send Transfer Request Instead</button>
+            </div>
+
+            <div class="field">
+              <label>Asset</label>
+              <select id="allocAsset" onchange="checkConflict()"></select>
+            </div>
+            <div class="field">
+              <label>Allocate To (Employee / Department)</label>
+              <input type="text" id="allocTo" placeholder="e.g. Raj Mehta or Engineering">
+            </div>
+            <div class="field">
+              <label>Expected Return Date (optional)</label>
+              <input type="date" id="allocReturnDate">
+            </div>
+            <button class="btn-primary" id="allocateBtn" onclick="allocateAsset()">Allocate</button>
+          </div>
+        </section>
+
+        <!-- Transfer requests -->
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Transfer Requests</h2>
+            <span class="count" id="transferCount">0 pending</span>
+          </div>
+          <div id="transferList"></div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Return modal -->
+<div class="modal-overlay" id="returnModal">
+  <div class="modal-box">
+    <h3>Mark as Returned</h3>
+    <div class="modal-sub" id="returnModalSub">Capture condition check-in notes</div>
+    <textarea id="conditionNotes" placeholder="e.g. Minor scratch on lid, fully functional"></textarea>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeReturnModal()">Cancel</button>
+      <button class="modal-confirm" onclick="confirmReturn()">Confirm Return</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ---- Clock ----
+  function tick(){ document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB'); }
+  tick(); setInterval(tick, 1000);
+
+  // ---------------------------------------------------
+  // Mock data — swap for real API calls later.
+  // status: 'Available' | 'Allocated' | 'Overdue' (Overdue is computed, not stored)
+  // ---------------------------------------------------
+  let assets = [
+    { id:'AF-0114', name:'Laptop – Dell XPS 15', holder:'Priya Singh', dept:'Engineering', allocatedDate:'2026-06-20', expectedReturn:'2026-07-05', status:'Allocated' },
+    { id:'AF-0207', name:'Laptop – MacBook Pro 14', holder:null, dept:null, allocatedDate:null, expectedReturn:null, status:'Available' },
+    { id:'AF-0332', name:'Projector – BenQ TH585', holder:'Marketing', dept:'Marketing', allocatedDate:'2026-07-08', expectedReturn:'2026-07-20', status:'Allocated' },
+    { id:'AF-0459', name:'DSLR Camera Kit', holder:null, dept:null, allocatedDate:null, expectedReturn:null, status:'Available' },
+    { id:'AF-0501', name:'Standing Desk Unit', holder:'Arjun Rao', dept:'Design', allocatedDate:'2026-06-01', expectedReturn:'2026-07-01', status:'Allocated' },
+  ];
+
+  let transfers = [];  // { id, assetId, from, to, status: 'Requested' | 'Approved' | 'Re-allocated', requestedDate }
+  let nextTransferId = 1;
+
+  let pendingConflictAssetId = null; // used to remember which asset triggered the conflict box
+
+  // ---------------------------------------------------
+  // Helper: is a date before today?
+  // ---------------------------------------------------
+  function isOverdue(dateStr){
+    if (!dateStr) return false;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const d = new Date(dateStr);
+    return d < today;
+  }
+
+  function fmtDate(dateStr){
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short' });
+  }
+
+  // ---------------------------------------------------
+  // Populate the asset dropdown in the allocate form
+  // ---------------------------------------------------
+  function populateAssetDropdown(){
+    const select = document.getElementById('allocAsset');
+    select.innerHTML = assets.map(a =>
+      `<option value="${a.id}">${a.id} — ${a.name}</option>`
+    ).join('');
+    checkConflict();
+  }
+
+  // ---------------------------------------------------
+  // Conflict rule: check the selected asset's current status.
+  // If already allocated, show the conflict box and hide Allocate.
+  // ---------------------------------------------------
+  function checkConflict(){
+    const assetId = document.getElementById('allocAsset').value;
+    const asset = assets.find(a => a.id === assetId);
+    const box = document.getElementById('conflictBox');
+    const allocateBtn = document.getElementById('allocateBtn');
+
+    if (asset && asset.status !== 'Available') {
+      box.classList.add('show');
+      document.getElementById('conflictMsg').innerHTML =
+        `<b>${asset.id}</b> can't be allocated — currently held by <b>${asset.holder}</b>.`;
+      allocateBtn.style.display = 'none';
+      pendingConflictAssetId = asset.id;
+    } else {
+      box.classList.remove('show');
+      allocateBtn.style.display = 'block';
+      pendingConflictAssetId = null;
+    }
+  }
+
+  // ---------------------------------------------------
+  // Allocate an available asset to a person/department
+  // ---------------------------------------------------
+  function allocateAsset(){
+    const assetId = document.getElementById('allocAsset').value;
+    const to = document.getElementById('allocTo').value.trim();
+    const returnDate = document.getElementById('allocReturnDate').value;
+
+    if (!to) {
+      toast('Please enter who this asset is being allocated to.');
+      return;
+    }
+
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) return;
+
+    // Safety check — should already be blocked by checkConflict(), but double check
+    if (asset.status !== 'Available') {
+      toast(`${asset.id} is already held by ${asset.holder}.`);
+      return;
+    }
+
+    asset.holder = to;
+    asset.dept = to;
+    asset.allocatedDate = new Date().toISOString().slice(0,10);
+    asset.expectedReturn = returnDate || null;
+    asset.status = 'Allocated';
+
+    document.getElementById('allocTo').value = '';
+    document.getElementById('allocReturnDate').value = '';
+
+    renderAll();
+    toast(`${asset.id} allocated to ${to}.`);
+  }
+
+  // ---------------------------------------------------
+  // Transfer workflow: Requested -> Approved -> Re-allocated
+  // ---------------------------------------------------
+  function requestTransferFromConflict(){
+    const assetId = pendingConflictAssetId;
+    const to = document.getElementById('allocTo').value.trim();
+
+    if (!to) {
+      toast('Enter who the transfer request is for, then try again.');
+      return;
+    }
+
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) return;
+
+    transfers.push({
+      id: nextTransferId++,
+      assetId: asset.id,
+      assetName: asset.name,
+      from: asset.holder,
+      to: to,
+      status: 'Requested',
+      requestedDate: new Date().toISOString().slice(0,10)
+    });
+
+    document.getElementById('allocTo').value = '';
+    renderAll();
+    toast(`Transfer request sent for ${asset.id}: ${asset.holder} → ${to}`);
+  }
+
+  function requestTransferFromRow(assetId){
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) return;
+    const to = prompt(`Request transfer of ${asset.id} (currently with ${asset.holder}). Transfer to:`);
+    if (!to) return;
+
+    transfers.push({
+      id: nextTransferId++,
+      assetId: asset.id,
+      assetName: asset.name,
+      from: asset.holder,
+      to: to,
+      status: 'Requested',
+      requestedDate: new Date().toISOString().slice(0,10)
+    });
+
+    renderAll();
+    toast(`Transfer request sent for ${asset.id}.`);
+  }
+
+  // Approve moves Requested -> Approved -> (immediately) Re-allocated,
+  // and actually updates who holds the asset.
+  function approveTransfer(transferId){
+    const t = transfers.find(x => x.id === transferId);
+    if (!t) return;
+
+    if (t.status === 'Requested') {
+      t.status = 'Approved';
+      renderAll();
+      toast(`Transfer for ${t.assetId} approved. Re-allocating...`);
+
+      // simulate the re-allocation step happening right after approval
+      setTimeout(() => {
+        const asset = assets.find(a => a.id === t.assetId);
+        if (asset) {
+          asset.holder = t.to;
+          asset.dept = t.to;
+          asset.allocatedDate = new Date().toISOString().slice(0,10);
+          asset.status = 'Allocated';
+        }
+        t.status = 'Re-allocated';
+        renderAll();
+        toast(`${t.assetId} re-allocated to ${t.to}. History updated.`);
+      }, 900);
+    }
+  }
+
+  function rejectTransfer(transferId){
+    transfers = transfers.filter(t => t.id !== transferId);
+    renderAll();
+    toast('Transfer request rejected.');
+  }
+
+  // ---------------------------------------------------
+  // Return flow — opens a modal to capture condition notes
+  // ---------------------------------------------------
+  let returningAssetId = null;
+
+  function openReturnModal(assetId){
+    returningAssetId = assetId;
+    const asset = assets.find(a => a.id === assetId);
+    document.getElementById('returnModalSub').textContent =
+      `${asset.id} — ${asset.name} (currently with ${asset.holder})`;
+    document.getElementById('conditionNotes').value = '';
+    document.getElementById('returnModal').classList.add('show');
+  }
+
+  function closeReturnModal(){
+    document.getElementById('returnModal').classList.remove('show');
+    returningAssetId = null;
+  }
+
+  function confirmReturn(){
+    const asset = assets.find(a => a.id === returningAssetId);
+    if (!asset) return;
+
+    const notes = document.getElementById('conditionNotes').value.trim();
+
+    asset.holder = null;
+    asset.dept = null;
+    asset.allocatedDate = null;
+    asset.expectedReturn = null;
+    asset.status = 'Available';
+    asset.lastConditionNotes = notes || '(no notes entered)';
+
+    closeReturnModal();
+    renderAll();
+    toast(`${asset.id} marked as returned. Status reverted to Available.`);
+  }
+
+  // ---------------------------------------------------
+  // Render: summary cards
+  // ---------------------------------------------------
+  function renderSummary(){
+    const total = assets.length;
+    const allocated = assets.filter(a => a.status === 'Allocated' && !isOverdue(a.expectedReturn)).length;
+    const available = assets.filter(a => a.status === 'Available').length;
+    const overdue = assets.filter(a => a.status === 'Allocated' && isOverdue(a.expectedReturn)).length;
+
+    document.getElementById('summaryGrid').innerHTML = `
+      <div class="sum-card teal">
+        <div class="sum-label">Available</div>
+        <div class="sum-value">${available}</div>
+      </div>
+      <div class="sum-card blue">
+        <div class="sum-label">Allocated</div>
+        <div class="sum-value">${allocated}</div>
+      </div>
+      <div class="sum-card amber">
+        <div class="sum-label">Overdue Returns</div>
+        <div class="sum-value">${overdue}</div>
+      </div>
+      <div class="sum-card red">
+        <div class="sum-label">Pending Transfers</div>
+        <div class="sum-value">${transfers.filter(t => t.status !== 'Re-allocated').length}</div>
+      </div>
+    `;
+  }
+
+  // ---------------------------------------------------
+  // Render: allocations table
+  // ---------------------------------------------------
+  function renderAssetsTable(){
+    const body = document.getElementById('assetTableBody');
+    document.getElementById('assetCount').textContent = assets.length + ' assets';
+
+    body.innerHTML = assets.map(a => {
+      const overdue = a.status === 'Allocated' && isOverdue(a.expectedReturn);
+      let statusHtml;
+      if (a.status === 'Available') {
+        statusHtml = `<span class="badge available">Available</span>`;
+      } else if (overdue) {
+        statusHtml = `<span class="badge overdue">Overdue</span>`;
+      } else {
+        statusHtml = `<span class="badge allocated">Allocated</span>`;
+      }
+
+      let actions;
+      if (a.status === 'Available') {
+        actions = `<span style="color:var(--text-faint); font-size:11.5px;">—</span>`;
+      } else {
+        actions = `
+          <div class="row-actions">
+            <button class="mini-btn primary" onclick="requestTransferFromRow('${a.id}')">Transfer</button>
+            <button class="mini-btn" onclick="openReturnModal('${a.id}')">Return</button>
+          </div>`;
+      }
+
+      return `
+        <tr>
+          <td>
+            <div class="asset-name">${a.name}</div>
+            <div class="asset-id">${a.id}</div>
+          </td>
+          <td class="${a.holder ? 'holder-name' : 'holder-none'}">${a.holder || 'Unassigned'}</td>
+          <td>${fmtDate(a.expectedReturn)}</td>
+          <td>${statusHtml}</td>
+          <td>${actions}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // ---------------------------------------------------
+  // Render: transfer requests list
+  // ---------------------------------------------------
+  function renderTransfers(){
+    const list = document.getElementById('transferList');
+    const pending = transfers.filter(t => t.status !== 'Re-allocated');
+    document.getElementById('transferCount').textContent = pending.length + ' pending';
+
+    const visible = transfers.slice().reverse(); // most recent first
+
+    if (visible.length === 0) {
+      list.innerHTML = `<div class="empty-note">No transfer requests yet.</div>`;
+      return;
+    }
+
+    list.innerHTML = visible.map(t => `
+      <div class="transfer-item">
+        <div class="transfer-top">
+          <span class="transfer-asset">${t.assetId}</span>
+        </div>
+        <div class="transfer-route"><b>${t.from}</b> → <b>${t.to}</b></div>
+        <div class="stage-track">
+          <div class="stage ${t.status === 'Requested' ? 'current' : 'done'}">Requested</div>
+          <div class="stage ${t.status === 'Approved' ? 'current' : (t.status === 'Re-allocated' ? 'done' : '')}">Approved</div>
+          <div class="stage ${t.status === 'Re-allocated' ? 'done' : ''}">Re-allocated</div>
+        </div>
+        ${t.status === 'Requested' ? `
+          <div class="transfer-actions">
+            <button class="mini-btn primary" onclick="approveTransfer(${t.id})">Approve</button>
+            <button class="mini-btn danger" onclick="rejectTransfer(${t.id})">Reject</button>
+          </div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function renderAll(){
+    renderSummary();
+    renderAssetsTable();
+    renderTransfers();
+    populateAssetDropdownKeepSelection();
+  }
+
+  // keep the dropdown's currently selected asset when re-rendering, if possible
+  function populateAssetDropdownKeepSelection(){
+    const select = document.getElementById('allocAsset');
+    const prev = select.value;
+    select.innerHTML = assets.map(a =>
+      `<option value="${a.id}">${a.id} — ${a.name}</option>`
+    ).join('');
+    if (assets.find(a => a.id === prev)) select.value = prev;
+    checkConflict();
+  }
+
+  // ---- Toast ----
+  let toastTimer;
+  function toast(msg){
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.opacity = '1';
+    el.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(-50%) translateY(20px)';
+    }, 2600);
+  }
+
+  // ---- Init ----
+  populateAssetDropdown();
+  renderAll();
+
+  // recheck overdue status periodically (in case a demo runs across a date boundary)
+  setInterval(renderAll, 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+/* ============================================================
+     THEME TOKENS — same palette as the other screens in this
+     hackathon suite (Organization Setup, Resource Booking).
+     ============================================================ */
+  :root{
+    --bg:            #10141b;
+    --panel:         #171d27;
+    --panel-raised:  #1e2530;
+    --line:          #2a3341;
+    --text:          #e7ebf1;
+    --text-dim:      #8b96a8;
+    --amber:         #e8a33d;
+    --amber-dim:     #4a3620;
+    --teal:          #4fd1c5;
+    --teal-dim:      #1c3a38;
+    --blue:          #5b9df0;
+    --blue-dim:      #1c2c46;
+    --danger:        #e2685c;
+    --danger-dim:    #3a2424;
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    padding:40px 20px 80px;
+  }
+  .screen{ max-width:1080px; margin:0 auto; }
+
+  /* HEADER */
+  .header-row{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    margin-bottom:24px; flex-wrap:wrap; gap:12px;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size:12px;
+    letter-spacing:0.12em; text-transform:uppercase; color:var(--teal); margin:0 0 6px;
+  }
+  h1{ font-family:'Space Grotesk', sans-serif; font-size:28px; font-weight:600; margin:0; }
+  button.export{
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:13px;
+    background:var(--amber); color:#241a0a; border:none; padding:10px 16px;
+    border-radius:8px; cursor:pointer;
+  }
+  button.export:hover{ filter:brightness(1.08); }
+
+  /* KPI ROW */
+  .kpi-row{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+    gap:14px; margin-bottom:20px;
+  }
+  .kpi-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px;
+  }
+  .kpi-label{ font-size:12px; color:var(--text-dim); margin-bottom:8px; }
+  .kpi-value{ font-family:'Space Grotesk', sans-serif; font-size:26px; font-weight:600; }
+  .kpi-sub{ font-size:12px; color:var(--teal); margin-top:4px; }
+  .kpi-sub.warn{ color:var(--amber); }
+
+  /* PANEL */
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:24px; margin-bottom:20px;
+  }
+  .panel-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+  .panel-head h2{ font-family:'Space Grotesk', sans-serif; font-size:17px; margin:0 0 4px; }
+  .panel-head p{ color:var(--text-dim); font-size:13px; margin:0; }
+  .two-col{ display:grid; grid-template-columns:1.3fr 1fr; gap:20px; }
+  @media (max-width:760px){ .two-col{ grid-template-columns:1fr; } }
+  .chart-box{ position:relative; height:260px; }
+  .chart-box.short{ height:220px; }
+
+  /* SIDE LIST (most-used vs idle) */
+  .side-list{ display:flex; flex-direction:column; gap:10px; }
+  .side-row{
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--panel-raised); border:1px solid var(--line); border-radius:8px;
+    padding:10px 12px; font-size:13px;
+  }
+  .side-row .name{ font-weight:500; }
+  .side-row .tag{
+    font-family:'JetBrains Mono', monospace; font-size:11px; padding:3px 8px; border-radius:999px;
+  }
+  .tag.high{ background:var(--teal-dim); color:var(--teal); }
+  .tag.idle{ background:var(--danger-dim); color:var(--danger); }
+
+  /* TABLE-STYLE LIST (maintenance / retirement) */
+  .list{ border-top:1px solid var(--line); }
+  .row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:13px 4px; border-bottom:1px solid var(--line); flex-wrap:wrap;
+  }
+  .row-title{ font-weight:500; font-size:14px; }
+  .row-sub{ color:var(--text-dim); font-size:12px; margin-top:2px; }
+  .pill{
+    font-family:'JetBrains Mono', monospace; font-size:11px; padding:4px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .pill.due{ background:var(--danger-dim); color:var(--danger); }
+  .pill.soon{ background:var(--amber-dim); color:var(--amber); }
+  .pill.ok{ background:var(--teal-dim); color:var(--teal); }
+
+  /* HEATMAP — resource booking peak windows.
+     Built from plain divs, colored by a 0-1 intensity value. */
+  .heatmap{
+    display:grid;
+    grid-template-columns:60px repeat(12, 1fr);
+    gap:3px;
+  }
+  /* corner cell (top-left) — left intentionally blank to reserve grid space */
+  .heatmap .corner{ display:block; }
+  .heatmap .hcol-label{
+    font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--text-dim);
+    text-align:center; padding:4px 0;
+  }
+  .heatmap .day-label{
+    font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--text-dim);
+    display:flex; align-items:center;
+  }
+  .heat-cell{
+    height:22px; border-radius:4px;
+    background:var(--panel-raised);
+  }
+  .heatmap-legend{
+    display:flex; align-items:center; gap:8px; margin-top:12px; font-size:11px; color:var(--text-dim);
+  }
+  .legend-swatch{ width:14px; height:14px; border-radius:3px; }
+
+  .empty{ color:var(--text-dim); font-size:13px; padding:20px 4px; text-align:center; }

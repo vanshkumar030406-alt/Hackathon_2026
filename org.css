@@ -1,0 +1,238 @@
+
+  :root{
+    --bg:            #10141b;   /* page background - deep navy-charcoal */
+    --panel:         #171d27;   /* cards / tab content */
+    --panel-raised:  #1e2530;   /* inputs, hovered rows */
+    --line:          #2a3341;   /* hairline borders */
+    --text:          #e7ebf1;   /* primary text */
+    --text-dim:      #8b96a8;   /* secondary / muted text */
+    --amber:         #e8a33d;   /* primary accent - actions */
+    --amber-dim:     #4a3620;   /* amber tint bg */
+    --teal:          #4fd1c5;   /* secondary accent - hierarchy / links */
+    --teal-dim:      #1c3a38;   /* teal tint bg */
+    --danger:        #e2685c;
+    --radius: 10px;
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    padding:40px 20px;
+  }
+
+  .screen{
+    max-width:920px;
+    margin:0 auto;
+  }
+
+  /* ============================================================
+     2. HEADER
+     ============================================================ */
+  .header-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    margin-bottom:28px;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--teal);
+    margin:0 0 6px;
+  }
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:28px;
+    font-weight:600;
+    margin:0;
+  }
+  .admin-badge{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--amber);
+    background:var(--amber-dim);
+    border:1px solid #6b4e26;
+    padding:5px 10px;
+    border-radius:6px;
+    white-space:nowrap;
+  }
+
+  /* ============================================================
+     3. TAB STRIP
+     Styled like ledger dividers - the active tab "lifts" and
+     connects flush with the panel below it.
+     ============================================================ */
+  .tabs{
+    display:flex;
+    gap:4px;
+    margin-top:24px;
+  }
+  .tab-btn{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:14px;
+    font-weight:600;
+    color:var(--text-dim);
+    background:transparent;
+    border:1px solid var(--line);
+    border-bottom:none;
+    padding:12px 20px;
+    border-radius:10px 10px 0 0;
+    cursor:pointer;
+    position:relative;
+    top:1px;
+  }
+  .tab-btn .tab-letter{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--teal);
+    margin-right:8px;
+  }
+  .tab-btn.active{
+    color:var(--text);
+    background:var(--panel);
+    border-color:var(--line);
+  }
+  .tab-btn:not(.active):hover{
+    color:var(--text);
+    background:#141922;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:0 10px 10px 10px;
+    padding:28px;
+  }
+  .panel-head{
+    margin-bottom:20px;
+  }
+  .panel-head h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:18px;
+    margin:0 0 4px;
+  }
+  .panel-head p{
+    color:var(--text-dim);
+    font-size:13px;
+    margin:0;
+  }
+
+  /* ============================================================
+     4. FORMS
+     ============================================================ */
+  .form-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+    gap:14px;
+    margin-bottom:18px;
+    align-items:end;
+  }
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--text-dim);
+    margin-bottom:6px;
+  }
+  input[type=text], input[type=email], input[type=number], select{
+    width:100%;
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:9px 10px;
+    border-radius:8px;
+    font-size:14px;
+    font-family:'Inter', sans-serif;
+  }
+  input:focus, select:focus{
+    outline:none;
+    border-color:var(--teal);
+  }
+  .checkbox-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding-bottom:9px;
+  }
+  .checkbox-row input{ width:auto; }
+  .checkbox-row label{ margin:0; color:var(--text); font-size:13px; }
+
+  button.primary{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    background:var(--amber);
+    color:#241a0a;
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  button.primary:hover{ filter:brightness(1.08); }
+
+  /* ============================================================
+     5. LIST / TREE ROWS
+     ============================================================ */
+  .list{
+    border-top:1px solid var(--line);
+    margin-top:6px;
+  }
+  .row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:14px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .row-main{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .tree-indent{
+    color:var(--teal);
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    opacity:0.7;
+  }
+  .row-title{ font-weight:500; font-size:14px; }
+  .row-sub{ color:var(--text-dim); font-size:12px; margin-top:2px; }
+  .pill{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    padding:4px 9px;
+    border-radius:999px;
+    white-space:nowrap;
+  }
+  .pill.active{ background:var(--teal-dim); color:var(--teal); }
+  .pill.inactive{ background:#3a2a2a; color:var(--danger); }
+  .pill.role{ background:var(--amber-dim); color:var(--amber); }
+  .row-actions{ display:flex; gap:6px; }
+  .icon-btn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--text-dim);
+    border-radius:6px;
+    padding:5px 9px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .icon-btn:hover{ color:var(--text); border-color:var(--text-dim); }
+  .icon-btn.danger:hover{ color:var(--danger); border-color:var(--danger); }
+  .empty{
+    color:var(--text-dim);
+    font-size:13px;
+    padding:20px 4px;
+    text-align:center;
+  }
+  select.role-assign{
+    max-width:170px;
+  }
+ 

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asset Registration & Directory</title>
+    <link rel="stylesheet" href="asset-directory.css">
+</head>
+<body>
+
+<header class="header">
+    <div class="logo">AssetFlow</div>
+
+    <nav>
+        <ul>
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="asset-directory.html">Assets</a></li>
+            <li><a href="resource.html">Bookings</a></li>
+            <li><a href="audit.html">Audit</a></li>
+            <li><a href="Org.html">Organisation</a></li>
+            <li><a href="transfer.html">Transfers</a></li>
+            <li><a href="report.html">Reports</a></li>
+        </ul>
+    </nav>
+
+    <a href="index.html" class="logout">Logout</a>
+</header>
+
+<div class="container">
+
+    <div class="top-section">
+        <h1>Asset Registration & Directory</h1>
+    </div>
+
+    <div class="register-card">
+
+        <h2>Register New Asset</h2>
+
+        <form id="assetForm">
+
+            <input type="text" id="assetName" placeholder="Asset Name" required>
+
+            <select id="category" required>
+                <option value="">Select Category</option>
+                <option>Electronics</option>
+                <option>Furniture</option>
+                <option>Vehicle</option>
+            </select>
+
+            <input type="text" id="serial" placeholder="Serial Number" required>
+
+            <input type="text" id="location" placeholder="Location" required>
+
+            <select id="status" required>
+                <option value="Available">Available</option>
+                <option value="Allocated">Allocated</option>
+                <option value="Reserved">Reserved</option>
+                <option value="Under Maintenance">Under Maintenance</option>
+                <option value="Lost">Lost</option>
+                <option value="Retired">Retired</option>
+            </select>
+
+            <button type="submit">Register Asset</button>
+
+        </form>
+
+    </div>
+
+    <div class="directory-card">
+
+        <div class="table-header">
+            <h2>Asset Directory</h2>
+
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Search Asset..."
+                onkeyup="searchAsset()">
+        </div>
+
+        <table id="assetTable">
+
+            <thead>
+                <tr>
+                    <th>Asset Tag</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Serial No.</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                <tr>
+                    <td>AF-0001</td>
+                    <td>Dell Latitude</td>
+                    <td>Electronics</td>
+                    <td>DL12345</td>
+                    <td>IT Department</td>
+                    <td>
+                        <span class="available">
+                            Available
+                        </span>
+                    </td>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+let assetCounter = 2;
+
+document.getElementById("assetForm")
+.addEventListener("submit", function(e){
+
+    e.preventDefault();
+
+    let name =
+        document.getElementById("assetName").value;
+
+    let category =
+        document.getElementById("category").value;
+
+    let serial =
+        document.getElementById("serial").value;
+
+    let location =
+        document.getElementById("location").value;
+
+    let status =
+        document.getElementById("status").value;
+
+    let assetTag =
+        "AF-" +
+        String(assetCounter).padStart(4, '0');
+
+    assetCounter++;
+
+    let badgeClass = "";
+
+    if(status === "Available"){
+        badgeClass = "available";
+    }
+    else if(status === "Allocated"){
+        badgeClass = "allocated";
+    }
+    else if(status === "Reserved"){
+        badgeClass = "reserved";
+    }
+    else{
+        badgeClass = "maintenance";
+    }
+
+    let row = `
+        <tr>
+            <td>${assetTag}</td>
+            <td>${name}</td>
+            <td>${category}</td>
+            <td>${serial}</td>
+            <td>${location}</td>
+            <td>
+                <span class="${badgeClass}">
+                    ${status}
+                </span>
+            </td>
+        </tr>
+    `;
+
+    document
+    .querySelector("#assetTable tbody")
+    .insertAdjacentHTML("beforeend", row);
+
+    alert("Asset Registered Successfully!");
+
+    document.getElementById("assetForm").reset();
+});
+
+function searchAsset(){
+
+    let input =
+        document.getElementById("searchInput")
+        .value
+        .toUpperCase();
+
+    let rows =
+        document.querySelectorAll("#assetTable tbody tr");
+
+    rows.forEach(function(row){
+
+        let text = row.innerText.toUpperCase();
+
+        if(text.indexOf(input) > -1){
+            row.style.display = "";
+        }
+        else{
+            row.style.display = "none";
+        }
+
+    });
+}
+
+</script>
+
+</body>
+</html>

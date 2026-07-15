@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asset Ops — Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="Audit.css">
+</head>
+<body>
+
+<nav class="rail" aria-label="Primary navigation">
+  <div class="rail-logo">AO</div>
+  <a class="rail-item" href="dashboard.html">Dashboard</a>
+  <a class="rail-item" href="asset-directory.html">Assets</a>
+  <a class="rail-item" href="resource.html">Bookings</a>
+  <a class="rail-item" href="Audit.html">Audit</a>
+    <a class="rail-item" href="Org.html">Organisation</a>
+  <a class="rail-item" href="transfer.html">Transfers</a>
+  <!-- <a class="rail-item active">Audit</a> -->
+  <a class="rail-item" href="report.html">Reports</a>
+  <div class="rail-spacer"></div>
+  <div class="rail-avatar">RS</div>
+</nav>
+
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-title">
+      <h1>Asset Audit</h1>
+      <span class="eyebrow">Structured verification cycles</span>
+    </div>
+    <span class="clock" id="clock">--:--:--</span>
+  </header>
+
+  <main class="content">
+
+    <!-- New audit cycle -->
+    <section class="panel new-cycle-panel">
+      <div class="panel-head"><h2>Create Audit Cycle</h2></div>
+      <div class="panel-body">
+        <div class="form-row">
+          <div class="field">
+            <label>Scope — Department / Location</label>
+            <select id="cycleScope">
+              <option>Engineering</option>
+              <option>Marketing</option>
+              <option>Design</option>
+              <option>Warehouse — West Zone</option>
+              <option>Warehouse — East Zone</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Start Date</label>
+            <input type="date" id="cycleStart">
+          </div>
+          <div class="field">
+            <label>End Date</label>
+            <input type="date" id="cycleEnd">
+          </div>
+        </div>
+        <div class="form-row" style="grid-template-columns:1fr;">
+          <div class="field">
+            <label>Assign Auditors (comma-separated)</label>
+            <input type="text" id="cycleAuditors" placeholder="e.g. Neha Kapoor, Vikram Iyer">
+          </div>
+        </div>
+        <button class="btn-primary" onclick="createCycle()">Create Cycle</button>
+      </div>
+    </section>
+
+    <div class="section-label">Audit Cycles</div>
+    <section class="cycle-grid" id="cycleGrid"></section>
+
+    <div class="body-grid">
+      <!-- Checklist -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2 id="checklistTitle">Checklist</h2>
+          <div id="checklistHeadActions"></div>
+        </div>
+        <div id="checklistBody"></div>
+      </section>
+
+      <!-- Right column: discrepancy report + history -->
+      <div style="display:flex; flex-direction:column; gap:18px;">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Discrepancy Report</h2>
+            <span class="count" id="discCount">0 flagged</span>
+          </div>
+          <div id="discList"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><h2>Audit History</h2></div>
+          <div id="historyList"></div>
+        </section>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ---- Clock ----
+  function tick(){ document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB'); }
+  tick(); setInterval(tick, 1000);
+
+  // ---------------------------------------------------
+  // Mock asset pool — in a real app this would be pulled per scope from the server
+  // ---------------------------------------------------
+  const assetPool = [
+    { id:'AF-0114', name:'Laptop – Dell XPS 15' },
+    { id:'AF-0207', name:'Laptop – MacBook Pro 14' },
+    { id:'AF-0332', name:'Projector – BenQ TH585' },
+    { id:'AF-0459', name:'DSLR Camera Kit' },
+    { id:'AF-0501', name:'Standing Desk Unit' },
+    { id:'AF-0612', name:'Wireless Mic Set' },
+    { id:'AF-0733', name:'Site Camera Kit' },
+  ];
+
+  // ---------------------------------------------------
+  // Cycles data model:
+  // { id, scope, start, end, auditors:[], status:'Active'|'Closed',
+  //   assets:[{id,name,verdict:null|'Verified'|'Missing'|'Damaged'}] }
+  // ---------------------------------------------------
+  let cycles = [
+    {
+      id: 1, scope:'Engineering', start:'2026-07-01', end:'2026-07-05',
+      auditors:['Neha Kapoor'], status:'Closed',
+      assets: [
+        { id:'AF-0114', name:'Laptop – Dell XPS 15', verdict:'Verified' },
+        { id:'AF-0501', name:'Standing Desk Unit', verdict:'Verified' },
+        { id:'AF-0612', name:'Wireless Mic Set', verdict:'Missing' },
+      ]
+    }
+  ];
+  let nextCycleId = 2;
+  let selectedCycleId = null;
+
+  // ---------------------------------------------------
+  // Create a new audit cycle
+  // ---------------------------------------------------
+  function createCycle(){
+    const scope = document.getElementById('cycleScope').value;
+    const start = document.getElementById('cycleStart').value;
+    const end = document.getElementById('cycleEnd').value;
+    const auditorsRaw = document.getElementById('cycleAuditors').value.trim();
+
+    if (!start || !end) { toast('Please pick a start and end date.'); return; }
+    if (!auditorsRaw) { toast('Please assign at least one auditor.'); return; }
+
+    const auditors = auditorsRaw.split(',').map(a => a.trim()).filter(Boolean);
+
+    const newCycle = {
+      id: nextCycleId++,
+      scope: scope,
+      start: start,
+      end: end,
+      auditors: auditors,
+      status: 'Active',
+      assets: assetPool.map(a => ({ id:a.id, name:a.name, verdict:null }))
+    };
+
+    cycles.push(newCycle);
+    selectedCycleId = newCycle.id;
+
+    document.getElementById('cycleAuditors').value = '';
+    renderAll();
+    toast(`Audit cycle created for ${scope}.`);
+  }
+
+  // ---------------------------------------------------
+  // Select a cycle to view/edit its checklist
+  // ---------------------------------------------------
+  function selectCycle(id){
+    selectedCycleId = id;
+    renderAll();
+  }
+
+  // ---------------------------------------------------
+  // Mark an asset's verdict within the currently selected cycle
+  // ---------------------------------------------------
+  function markAsset(cycleId, assetId, verdict){
+    const cycle = cycles.find(c => c.id === cycleId);
+    if (!cycle || cycle.status === 'Closed') return;
+
+    const asset = cycle.assets.find(a => a.id === assetId);
+    if (!asset) return;
+
+    asset.verdict = verdict;
+    renderAll();
+  }
+
+  // ---------------------------------------------------
+  // Close a cycle: locks it and updates affected asset statuses
+  // (confirmed-missing items become 'Lost')
+  // ---------------------------------------------------
+  function closeCycle(cycleId){
+    const cycle = cycles.find(c => c.id === cycleId);
+    if (!cycle) return;
+
+    const unmarked = cycle.assets.filter(a => a.verdict === null).length;
+    if (unmarked > 0) {
+      const proceed = confirm(`${unmarked} asset(s) haven't been marked yet. Close the cycle anyway?`);
+      if (!proceed) return;
+    }
+
+    cycle.status = 'Closed';
+
+    // items still marked "Missing" at close time become "Lost"
+    cycle.assets.forEach(a => {
+      if (a.verdict === 'Missing') {
+        a.resolvedStatus = 'Lost';
+      }
+    });
+
+    renderAll();
+    toast(`Cycle for ${cycle.scope} closed. Statuses updated.`);
+  }
+
+  // ---------------------------------------------------
+  // Render: cycle cards
+  // ---------------------------------------------------
+  function renderCycleGrid(){
+    const grid = document.getElementById('cycleGrid');
+    const sorted = cycles.slice().reverse();
+
+    grid.innerHTML = sorted.map(c => {
+      const v = c.assets.filter(a => a.verdict === 'Verified').length;
+      const m = c.assets.filter(a => a.verdict === 'Missing').length;
+      const d = c.assets.filter(a => a.verdict === 'Damaged').length;
+      const p = c.assets.filter(a => a.verdict === null).length;
+
+      return `
+        <div class="cycle-card ${c.id === selectedCycleId ? 'selected' : ''}" onclick="selectCycle(${c.id})">
+          <div class="cycle-top">
+            <div>
+              <div class="cycle-scope">${c.scope}</div>
+              <div class="cycle-range">${c.start} → ${c.end}</div>
+            </div>
+            <span class="cycle-badge ${c.status.toLowerCase()}">${c.status}</span>
+          </div>
+          <div class="cycle-auditors">Auditors: ${c.auditors.join(', ')}</div>
+          <div class="cycle-stats">
+            <span class="v">${v} ✓</span>
+            <span class="m">${m} missing</span>
+            <span class="d">${d} damaged</span>
+            <span class="p">${p} pending</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ---------------------------------------------------
+  // Render: checklist for the selected cycle
+  // ---------------------------------------------------
+  function renderChecklist(){
+    const title = document.getElementById('checklistTitle');
+    const body = document.getElementById('checklistBody');
+    const headActions = document.getElementById('checklistHeadActions');
+
+    const cycle = cycles.find(c => c.id === selectedCycleId);
+
+    if (!cycle) {
+      title.textContent = 'Checklist';
+      headActions.innerHTML = '';
+      body.innerHTML = `<div class="empty-note">Select an audit cycle above to view its checklist.</div>`;
+      return;
+    }
+
+    title.textContent = `Checklist — ${cycle.scope}`;
+    const locked = cycle.status === 'Closed';
+
+    headActions.innerHTML = locked
+      ? `<span class="count">Locked</span>`
+      : `<button class="btn-primary" onclick="closeCycle(${cycle.id})">Close Audit Cycle</button>`;
+
+    body.innerHTML = cycle.assets.map(a => `
+      <div class="checklist-row">
+        <div class="cl-info">
+          <div class="cl-name">${a.name}${a.resolvedStatus ? ' <span style="color:var(--red); font-size:11px;">(' + a.resolvedStatus + ')</span>' : ''}</div>
+          <div class="cl-id">${a.id}</div>
+        </div>
+        <div class="verdict-btns">
+          <button class="v-btn verified ${a.verdict === 'Verified' ? 'on' : ''}" ${locked ? 'disabled' : ''} onclick="markAsset(${cycle.id}, '${a.id}', 'Verified')">Verified</button>
+          <button class="v-btn missing ${a.verdict === 'Missing' ? 'on' : ''}" ${locked ? 'disabled' : ''} onclick="markAsset(${cycle.id}, '${a.id}', 'Missing')">Missing</button>
+          <button class="v-btn damaged ${a.verdict === 'Damaged' ? 'on' : ''}" ${locked ? 'disabled' : ''} onclick="markAsset(${cycle.id}, '${a.id}', 'Damaged')">Damaged</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ---------------------------------------------------
+  // Render: discrepancy report (auto-generated from flagged items)
+  // ---------------------------------------------------
+  function renderDiscrepancy(){
+    const list = document.getElementById('discList');
+    const cycle = cycles.find(c => c.id === selectedCycleId);
+
+    if (!cycle) {
+      list.innerHTML = `<div class="empty-note">No cycle selected.</div>`;
+      document.getElementById('discCount').textContent = '0 flagged';
+      return;
+    }
+
+    const flagged = cycle.assets.filter(a => a.verdict === 'Missing' || a.verdict === 'Damaged');
+    document.getElementById('discCount').textContent = flagged.length + ' flagged';
+
+    if (flagged.length === 0) {
+      list.innerHTML = `<div class="empty-note">No discrepancies flagged for this cycle.</div>`;
+      return;
+    }
+
+    list.innerHTML = flagged.map(a => `
+      <div class="disc-row">
+        <span class="disc-tag ${a.verdict.toLowerCase()}">${a.verdict}</span>
+        <span class="disc-name"><b>${a.name}</b> — ${a.id}</span>
+      </div>
+    `).join('');
+  }
+
+  // ---------------------------------------------------
+  // Render: audit history (closed cycles)
+  // ---------------------------------------------------
+  function renderHistory(){
+    const list = document.getElementById('historyList');
+    const closed = cycles.filter(c => c.status === 'Closed').slice().reverse();
+
+    if (closed.length === 0) {
+      list.innerHTML = `<div class="empty-note">No closed audit cycles yet.</div>`;
+      return;
+    }
+
+    list.innerHTML = closed.map(c => {
+      const v = c.assets.filter(a => a.verdict === 'Verified').length;
+      const m = c.assets.filter(a => a.verdict === 'Missing').length;
+      const d = c.assets.filter(a => a.verdict === 'Damaged').length;
+      return `
+        <div class="history-row">
+          <div class="history-left">
+            <div><b>${c.scope}</b></div>
+            <div class="history-meta">${c.start} → ${c.end} · ${c.auditors.join(', ')}</div>
+          </div>
+          <div class="history-stats">${v}✓ / ${m}M / ${d}D</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderAll(){
+    renderCycleGrid();
+    renderChecklist();
+    renderDiscrepancy();
+    renderHistory();
+  }
+
+  // ---- Toast ----
+  let toastTimer;
+  function toast(msg){
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.opacity = '1';
+    el.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(-50%) translateY(20px)';
+    }, 2600);
+  }
+
+  // ---- Init ----
+  renderAll();
+</script>
+</body>
+</html>

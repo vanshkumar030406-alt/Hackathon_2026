@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resource Booking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="resourcebooking.css">
+</head>
+<body>
+
+<div id="reminder-toast">
+  <strong>Starting soon</strong>
+  <span id="reminder-text"></span>
+  <br>
+  <button onclick="dismissReminder()">Dismiss</button>
+</div>
+
+<div class="screen">
+
+  <div class="header-row">
+    <div>
+      <p class="eyebrow">Shared resources · No overlaps</p>
+      <h1>Resource booking</h1>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BOOKING FORM
+       ============================================================ -->
+  <div class="panel">
+    <div class="panel-head">
+      <h2>New booking</h2>
+      <p>Pick a resource, date, and time range. Overlapping requests are rejected automatically.</p>
+    </div>
+
+    <div class="form-grid">
+      <div>
+        <label>Resource</label>
+        <select id="b-resource">
+          <option>Room A1</option>
+          <option>Room B2</option>
+          <option>Projector 1</option>
+          <option>Conference Hall</option>
+        </select>
+      </div>
+      <div>
+        <label>Date</label>
+        <input type="date" id="b-date">
+      </div>
+      <div>
+        <label>Start time</label>
+        <input type="time" id="b-start" value="09:00">
+      </div>
+      <div>
+        <label>End time</label>
+        <input type="time" id="b-end" value="10:00">
+      </div>
+      <div>
+        <label>Booked by / purpose</label>
+        <input type="text" id="b-purpose" placeholder="e.g. Gopal — sprint planning">
+      </div>
+      <div>
+        <button class="primary" id="submit-btn" onclick="submitBooking()">Book slot</button>
+      </div>
+    </div>
+
+    <div id="form-error"></div>
+  </div>
+
+  <!-- ============================================================
+       DAY VIEW FOR SELECTED RESOURCE + DATE
+       ============================================================ -->
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Day view</h2>
+      <p>Existing bookings for the selected resource and date, 8:00–20:00.</p>
+    </div>
+    <div class="timeline-wrap">
+      <div class="hour-col" id="hour-labels"></div>
+      <div class="track" id="track"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       ALL BOOKINGS LIST
+       ============================================================ -->
+  <div class="panel">
+    <div class="panel-head">
+      <h2>All bookings</h2>
+      <p>Cancel or reschedule any booking. Status updates automatically based on the current time.</p>
+    </div>
+    <div class="list" id="booking-list"></div>
+  </div>
+
+</div>
+
+<script>
+/* ================================================================
+   STATE
+   One array of booking objects, kept in memory. Each booking:
+   { id, resource, date ('YYYY-MM-DD'), start ('HH:MM'), end ('HH:MM'),
+     purpose, cancelled (bool) }
+
+   Status (Upcoming / Ongoing / Completed / Cancelled) is NOT stored —
+   it's calculated live by comparing the booking's start/end to the
+   current date and time. That way it's always correct, even for
+   bookings created earlier.
+   ================================================================ */
+let bookings = [];
+let nextId = 1;
+let dismissedReminderIds = new Set(); // reminders the user has closed
+
+const DAY_START_HOUR = 8;
+const DAY_END_HOUR   = 20;
+
+/* ================================================================
+   HELPERS — turn "HH:MM" strings into minutes for easy comparison
+   ================================================================ */
+function toMinutes(hhmm){
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function combineDateTime(dateStr, timeStr){
+  return new Date(dateStr + 'T' + timeStr + ':00');
+}
+
+/* ================================================================
+   OVERLAP CHECK
+   Two slots [aStart, aEnd) and [bStart, bEnd) overlap when
+   aStart < bEnd AND aEnd > bStart.
+   A slot that starts exactly when another ends (10:00–11:00 right
+   after 9:00–10:00) does NOT overlap — matches the spec example.
+   ================================================================ */
+function findOverlap(resource, date, start, end, excludeId){
+  const newStart = toMinutes(start);
+  const newEnd   = toMinutes(end);
+
+  return bookings.find(b=>{
+    if (b.id === excludeId) return false;      // ignore itself when rescheduling
+    if (b.cancelled) return false;               // cancelled slots free up the room
+    if (b.resource !== resource || b.date !== date) return false;
+
+    const existingStart = toMinutes(b.start);
+    const existingEnd   = toMinutes(b.end);
+
+    return newStart < existingEnd && newEnd > existingStart;
+  });
+}
+
+/* ================================================================
+   STATUS CALCULATION
+   ================================================================ */
+function getStatus(booking){
+  if (booking.cancelled) return 'Cancelled';
+
+  const now   = new Date();
+  const start = combineDateTime(booking.date, booking.start);
+  const end   = combineDateTime(booking.date, booking.end);
+
+  if (now < start) return 'Upcoming';
+  if (now >= start && now < end) return 'Ongoing';
+  return 'Completed';
+}
+
+/* ================================================================
+   FORM SUBMIT — handles both "new booking" and "reschedule"
+   (reschedule re-uses the same form; editingId tracks which
+   booking, if any, is currently being edited)
+   ================================================================ */
+let editingId = null;
+
+function submitBooking(){
+  const resource = document.getElementById('b-resource').value;
+  const date     = document.getElementById('b-date').value;
+  const start    = document.getElementById('b-start').value;
+  const end      = document.getElementById('b-end').value;
+  const purpose  = document.getElementById('b-purpose').value.trim();
+  const errorBox = document.getElementById('form-error');
+
+  errorBox.style.display = 'none';
+
+  if (!date || !start || !end || !purpose){
+    showFormError('Fill in date, start time, end time, and purpose.');
+    return;
+  }
+  if (toMinutes(end) <= toMinutes(start)){
+    showFormError('End time must be after start time.');
+    return;
+  }
+
+  const clash = findOverlap(resource, date, start, end, editingId);
+  if (clash){
+    showFormError(
+      `${resource} is already booked ${clash.start}–${clash.end} on ${clash.date}. Choose a different time.`
+    );
+    return;
+  }
+
+  if (editingId){
+    // Rescheduling an existing booking
+    const b = bookings.find(b=>b.id===editingId);
+    b.resource = resource; b.date = date; b.start = start; b.end = end; b.purpose = purpose;
+    editingId = null;
+    document.getElementById('submit-btn').textContent = 'Book slot';
+  } else {
+    // Brand new booking
+    bookings.push({ id: nextId++, resource, date, start, end, purpose, cancelled:false });
+  }
+
+  clearForm();
+  renderAll();
+}
+
+function showFormError(msg){
+  const errorBox = document.getElementById('form-error');
+  errorBox.textContent = msg;
+  errorBox.style.display = 'block';
+}
+
+function clearForm(){
+  document.getElementById('b-purpose').value = '';
+}
+
+/* ================================================================
+   CANCEL / RESCHEDULE actions from the list rows
+   ================================================================ */
+function cancelBooking(id){
+  const b = bookings.find(b=>b.id===id);
+  b.cancelled = true;
+  renderAll();
+}
+
+function startReschedule(id){
+  const b = bookings.find(b=>b.id===id);
+  editingId = id;
+  document.getElementById('b-resource').value = b.resource;
+  document.getElementById('b-date').value     = b.date;
+  document.getElementById('b-start').value    = b.start;
+  document.getElementById('b-end').value      = b.end;
+  document.getElementById('b-purpose').value  = b.purpose;
+  document.getElementById('submit-btn').textContent = 'Save reschedule';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function deleteBooking(id){
+  bookings = bookings.filter(b=>b.id!==id);
+  renderAll();
+}
+
+/* ================================================================
+   DAY TIMELINE RENDER
+   Draws hour rows 8:00–20:00 and positions each booking block
+   using simple math: minutes-from-day-start / total-minutes.
+   ================================================================ */
+function renderTimeline(){
+  const resource = document.getElementById('b-resource').value;
+  const date     = document.getElementById('b-date').value || new Date().toISOString().slice(0,10);
+
+  const totalHours = DAY_END_HOUR - DAY_START_HOUR;
+  const hourLabels = document.getElementById('hour-labels');
+  const track      = document.getElementById('track');
+
+  hourLabels.innerHTML = '';
+  for (let h=DAY_START_HOUR; h<DAY_END_HOUR; h++){
+    const div = document.createElement('div');
+    div.className = 'hour-label';
+    div.textContent = String(h).padStart(2,'0') + ':00';
+    hourLabels.appendChild(div);
+  }
+
+  track.innerHTML = '';
+  track.style.height = (totalHours * 48) + 'px';
+  for (let h=DAY_START_HOUR; h<DAY_END_HOUR; h++){
+    const div = document.createElement('div');
+    div.className = 'track-hour';
+    track.appendChild(div);
+  }
+
+  const dayBookings = bookings.filter(b=>b.resource===resource && b.date===date);
+  dayBookings.forEach(b=>{
+    const startMin = toMinutes(b.start) - DAY_START_HOUR*60;
+    const endMin   = toMinutes(b.end)   - DAY_START_HOUR*60;
+    const top      = (startMin / 60) * 48;
+    const height   = Math.max(((endMin-startMin) / 60) * 48, 24);
+
+    const status = getStatus(b);
+    const block = document.createElement('div');
+    block.className = 'booking-block status-' + status.toLowerCase();
+    block.style.top = top + 'px';
+    block.style.height = height + 'px';
+    block.innerHTML = `<div class="b-title">${b.purpose}</div><div class="b-time">${b.start}–${b.end}</div>`;
+    track.appendChild(block);
+  });
+}
+
+/* ================================================================
+   BOOKING LIST RENDER
+   ================================================================ */
+function renderBookingList(){
+  const list = document.getElementById('booking-list');
+  if (bookings.length === 0){
+    list.innerHTML = '<div class="empty">No bookings yet. Create one above.</div>';
+    return;
+  }
+
+  // soonest first
+  const sorted = [...bookings].sort((a,b)=>
+    combineDateTime(a.date,a.start) - combineDateTime(b.date,b.start)
+  );
+
+  list.innerHTML = sorted.map(b=>{
+    const status = getStatus(b);
+    const canAct = status === 'Upcoming' || status === 'Ongoing';
+    return `
+      <div class="row">
+        <div>
+          <div class="row-title">${b.resource} — ${b.purpose}</div>
+          <div class="row-sub">${b.date} · ${b.start}–${b.end}</div>
+        </div>
+        <div class="row-actions">
+          <span class="pill ${status.toLowerCase()}">${status}</span>
+          ${canAct ? `<button class="icon-btn" onclick="startReschedule(${b.id})">Reschedule</button>` : ''}
+          ${canAct ? `<button class="icon-btn danger" onclick="cancelBooking(${b.id})">Cancel</button>` : ''}
+          <button class="icon-btn danger" onclick="deleteBooking(${b.id})">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ================================================================
+   REMINDER NOTIFICATION
+   Checks every 30 seconds for any Upcoming booking starting within
+   the next 15 minutes and pops a toast. In a real app this would
+   be a push notification or email sent from the server instead.
+   ================================================================ */
+function checkReminders(){
+  const now = new Date();
+  const soon = bookings.find(b=>{
+    if (b.cancelled || dismissedReminderIds.has(b.id)) return false;
+    const start = combineDateTime(b.date, b.start);
+    const minsUntil = (start - now) / 60000;
+    return minsUntil > 0 && minsUntil <= 15;
+  });
+
+  const toast = document.getElementById('reminder-toast');
+  if (soon){
+    document.getElementById('reminder-text').textContent =
+      `${soon.resource} — ${soon.purpose} starts at ${soon.start}.`;
+    toast.dataset.bookingId = soon.id;
+    toast.style.display = 'block';
+  } else {
+    toast.style.display = 'none';
+  }
+}
+
+function dismissReminder(){
+  const toast = document.getElementById('reminder-toast');
+  dismissedReminderIds.add(Number(toast.dataset.bookingId));
+  toast.style.display = 'none';
+}
+
+/* ================================================================
+   MASTER RENDER + auto-refresh
+   Statuses depend on "now", so we re-render on an interval too —
+   a booking should flip from Upcoming to Ongoing on its own.
+   ================================================================ */
+function renderAll(){
+  renderTimeline();
+  renderBookingList();
+  checkReminders();
+}
+
+document.getElementById('b-resource').addEventListener('change', renderTimeline);
+document.getElementById('b-date').addEventListener('change', renderTimeline);
+
+// default the date picker to today
+document.getElementById('b-date').value = new Date().toISOString().slice(0,10);
+
+renderAll();
+setInterval(renderAll, 30000); // keep statuses and reminders live
+</script>
+
+</body>
+</html>

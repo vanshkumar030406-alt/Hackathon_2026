@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asset Ops — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+<nav class="rail" aria-label="Primary navigation">
+  <div class="rail-logo">AO</div>
+
+  <a class="rail-item active">Dashboard</a>
+  <a class="rail-item" href="asset-directory.html">Assets</a>
+  <a class="rail-item" href="resource.html">Bookings</a>
+  <a class="rail-item" href="audit.html">Audit</a>
+  <a class="rail-item" href="Org.html">Organisation</a>
+  <a class="rail-item" href="transfer.html">Transfers</a>
+  <a class="rail-item" href="report.html">Reports</a>
+
+  <div class="rail-spacer"></div>
+  <div class="rail-avatar">RS</div>
+</nav>
+
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-title">
+      <h1>Operations Dashboard</h1>
+      <span class="eyebrow">Warehouse&nbsp;·&nbsp;West&nbsp;Zone</span>
+    </div>
+    <div class="topbar-right">
+      <span class="live-pill"><span class="live-dot"></span>LIVE</span>
+      <span class="clock" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <main class="content">
+
+    <div class="section-label">Snapshot</div>
+    <section class="kpi-grid">
+
+      <div class="kpi-card teal">
+        <div class="kpi-top">
+          <span class="kpi-label">Assets<br>Available</span>
+          <span class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></span>
+        </div>
+        <div class="kpi-value">248</div>
+        <div class="kpi-sub up">▲ 12 since yesterday</div>
+      </div>
+
+      <div class="kpi-card blue">
+        <div class="kpi-top">
+          <span class="kpi-label">Assets<br>Allocated</span>
+          <span class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+        </div>
+        <div class="kpi-value">173</div>
+        <div class="kpi-sub">70% utilisation</div>
+      </div>
+
+      <div class="kpi-card amber">
+        <div class="kpi-top">
+          <span class="kpi-label">Maintenance<br>Today</span>
+          <span class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 0 0-5.6 5.6l-6 6a2 2 0 0 0 2.8 2.8l6-6a4 4 0 0 0 5.6-5.6l-2.3 2.3-2.8-.7-.7-2.8 2.3-2.3z"/></svg></span>
+        </div>
+        <div class="kpi-value">9</div>
+        <div class="kpi-sub warn">3 unassigned</div>
+      </div>
+
+      <div class="kpi-card violet">
+        <div class="kpi-top">
+          <span class="kpi-label">Active<br>Bookings</span>
+          <span class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg></span>
+        </div>
+        <div class="kpi-value">57</div>
+        <div class="kpi-sub">14 starting today</div>
+      </div>
+
+      <div class="kpi-card blue">
+        <div class="kpi-top">
+          <span class="kpi-label">Pending<br>Transfers</span>
+          <span class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h13l-3-3M20 17H7l3 3"/></svg></span>
+        </div>
+        <div class="kpi-value">6</div>
+        <div class="kpi-sub">2 awaiting approval</div>
+      </div>
+
+      <div class="kpi-card amber">
+        <div class="kpi-top">
+          <span class="kpi-label">Upcoming<br>Returns</span>
+          <span class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+        </div>
+        <div class="kpi-value">21</div>
+        <div class="kpi-sub warn">4 overdue now</div>
+      </div>
+
+    </section>
+
+    <div class="body-grid">
+
+      <!-- Returns panel -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Returns</h2>
+          <span class="count">25 total</span>
+        </div>
+        <div class="returns-tabs">
+          <button class="rtab active overdue" onclick="showReturns('overdue')" id="tab-overdue">Overdue · 4</button>
+          <button class="rtab" onclick="showReturns('upcoming')" id="tab-upcoming">Upcoming · 21</button>
+        </div>
+
+        <div id="returns-list"></div>
+
+        <a class="view-all" href="#">View all returns →</a>
+      </section>
+
+      <!-- Right column -->
+      <div>
+        <section class="panel">
+          <div class="panel-head"><h2>Quick actions</h2></div>
+          <div class="qa-grid">
+            <button class="qa-btn" onclick="toast('Opening Register Asset form…')">
+              <span class="qa-icon a1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
+              Register Asset
+              <span class="qa-arrow">→</span>
+            </button>
+            <button class="qa-btn" onclick="toast('Opening Book Resource form…')">
+              <span class="qa-icon a2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg></span>
+              Book Resource
+              <span class="qa-arrow">→</span>
+            </button>
+            <button class="qa-btn" onclick="toast('Opening Maintenance request form…')">
+              <span class="qa-icon a3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 0 0-5.6 5.6l-6 6a2 2 0 0 0 2.8 2.8l6-6a4 4 0 0 0 5.6-5.6l-2.3 2.3-2.8-.7-.7-2.8 2.3-2.3z"/></svg></span>
+              Raise Maintenance Request
+              <span class="qa-arrow">→</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="panel side-panel-gap">
+          <div class="panel-head">
+            <h2>Activity</h2>
+            <span class="count">Live</span>
+          </div>
+          <div id="activity-list"></div>
+        </section>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div id="toast" style="
+  position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--panel-raised); border:1px solid var(--border-soft);
+  color:var(--text); font-size:13px; padding:11px 18px; border-radius:9px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+  opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;
+  font-family:var(--font-body);
+"></div>
+
+<script>
+  // ---- Clock ----
+  function tick(){
+    document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB');
+  }
+  tick(); setInterval(tick, 1000);
+
+  // ---- Mock data (swap for API calls) ----
+  const returnsData = {
+    overdue: [
+      { name:'Excavator CAT-320D', code:'AST-0142', days:3,  date:'Jul 9',  icon:'truck' },
+      { name:'Scaffold Tower Set B', code:'AST-0871', days:1,  date:'Jul 11', icon:'box' },
+      { name:'Generator 20kVA', code:'AST-0459', days:6,  date:'Jul 6',  icon:'bolt' },
+      { name:'Concrete Mixer M4', code:'AST-0298', days:2,  date:'Jul 10', icon:'box' },
+    ],
+    upcoming: [
+      { name:'Forklift Toyota 8FG', code:'AST-0021', days:1,  date:'Jul 13', icon:'truck' },
+      { name:'Site Camera Kit', code:'AST-0553', days:2,  date:'Jul 14', icon:'box' },
+      { name:'Compressor 185CFM', code:'AST-0367', days:3,  date:'Jul 15', icon:'bolt' },
+      { name:'Portable Cabin', code:'AST-0912', days:4,  date:'Jul 16', icon:'box' },
+      { name:'Survey Total Station', code:'AST-0188', days:5,  date:'Jul 17', icon:'box' },
+    ]
+  };
+
+  const icons = {
+    truck: '<path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="7" cy="17" r="1.5"/><circle cx="17" cy="17" r="1.5"/>',
+    box:   '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/>',
+    bolt:  '<path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/>'
+  };
+
+  function renderReturns(kind){
+    const list = document.getElementById('returns-list');
+    list.innerHTML = returnsData[kind].map(item => `
+      <div class="asset-row">
+        <div class="tag-strip ${kind}"></div>
+        <div class="asset-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${icons[item.icon]}</svg></div>
+        <div class="asset-info">
+          <div class="asset-name">${item.name}</div>
+          <div class="asset-meta">${item.code}</div>
+        </div>
+        <div class="asset-status">
+          <div class="status-days ${kind}">${kind === 'overdue' ? item.days + 'd overdue' : 'in ' + item.days + 'd'}</div>
+          <div class="status-date">${kind === 'overdue' ? 'Due ' : 'Due '}${item.date}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function showReturns(kind){
+    document.getElementById('tab-overdue').classList.toggle('active', kind === 'overdue');
+    document.getElementById('tab-upcoming').classList.toggle('active', kind === 'upcoming');
+    renderReturns(kind);
+  }
+  showReturns('overdue');
+
+  // ---- Activity feed ----
+  const activity = [
+    { color:'var(--teal)',   text:'<b>Asset AST-0091</b> checked in from Site 4', time:'2 min ago' },
+    { color:'var(--amber)',  text:'<b>Maintenance</b> flagged on Generator 20kVA', time:'14 min ago' },
+    { color:'var(--blue)',   text:'<b>Booking</b> confirmed for Forklift 8FG', time:'32 min ago' },
+    { color:'var(--violet)', text:'<b>Transfer</b> approved: Site 2 → Site 4', time:'1 hr ago' },
+    { color:'var(--text-faint)', text:'<b>Asset AST-0553</b> registered by R. Shah', time:'2 hr ago' },
+  ];
+  document.getElementById('activity-list').innerHTML = activity.map(a => `
+    <div class="activity-item">
+      <span class="activity-dot" style="background:${a.color}"></span>
+      <div>
+        <div class="activity-text">${a.text}</div>
+        <div class="activity-time">${a.time}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // ---- Toast for quick actions ----
+  let toastTimer;
+  function toast(msg){
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.opacity = '1';
+    el.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(-50%) translateY(20px)';
+    }, 2200);
+  }
+</script>
+</body>
+</html>
